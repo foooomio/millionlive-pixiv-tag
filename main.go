@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 )
 
@@ -81,15 +82,20 @@ func update(records [][]string) ([][]string, error) {
 	today := time.Now().Format("2006-01-02")
 	output[0] = append(records[0], today)
 
+	var wg sync.WaitGroup
+
 	for i, record := range records[1:] {
-		name := record[0]
-		count, err := fetchTagCount(name)
-		if err != nil {
-			return nil, err
-		}
-		log.Println(name, count)
-		output[i+1] = append(record, count)
+		wg.Add(1)
+		go func(i int, record []string) {
+			defer wg.Done()
+			name := record[0]
+			count, _ := fetchTagCount(name)
+			log.Println(name, count)
+			output[i+1] = append(record, count)
+		}(i, record)
 	}
+
+	wg.Wait()
 
 	return output, nil
 }
