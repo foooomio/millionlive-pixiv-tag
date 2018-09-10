@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const baseUrl = "https://dic.pixiv.net/a/"
+const baseURL = "https://dic.pixiv.net/a/"
 
 var re = regexp.MustCompile(`pixivに投稿された作品数: (\d+)`)
 
@@ -64,7 +64,7 @@ func fetch(url string) ([]byte, error) {
 }
 
 func fetchTagCount(name string) (string, error) {
-	data, err := fetch(baseUrl + name)
+	data, err := fetch(baseURL + name)
 	if err != nil {
 		return "", err
 	}
