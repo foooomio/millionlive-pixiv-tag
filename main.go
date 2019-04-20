@@ -13,6 +13,7 @@ import (
 )
 
 const baseURL = "https://dic.pixiv.net/a/"
+const maxWorkers = 5
 
 var re = regexp.MustCompile(`pixivに投稿された作品数: (\d+)`)
 
@@ -76,28 +77,29 @@ func fetchTagCount(name string) (string, error) {
 	return string(match[1]), nil
 }
 
-func update(records [][]string) ([][]string, error) {
-	output := make([][]string, len(records))
-
+func update(records [][]string) error {
 	today := time.Now().Format("2006-01-02")
-	output[0] = append(records[0], today)
+	records[0] = append(records[0], today)
 
+	limit := make(chan struct{}, maxWorkers)
 	var wg sync.WaitGroup
 
 	for i, record := range records[1:] {
+		limit <- struct{}{}
 		wg.Add(1)
 		go func(i int, record []string) {
 			defer wg.Done()
 			name := record[0]
 			count, _ := fetchTagCount(name)
 			log.Println(name, count)
-			output[i+1] = append(record, count)
+			records[i+1] = append(record, count)
+			<-limit
 		}(i, record)
 	}
 
 	wg.Wait()
 
-	return output, nil
+	return nil
 }
 
 func main() {
@@ -106,17 +108,17 @@ func main() {
 	}
 	filename := os.Args[1]
 
-	input, err := readCsv(filename)
+	records, err := readCsv(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	output, err := update(input)
+	err = update(records)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = writeCsv(filename, output)
+	err = writeCsv(filename, records)
 	if err != nil {
 		log.Fatal(err)
 	}
