@@ -87,12 +87,18 @@ func update(records [][]string) error {
 	for i, record := range records[1:] {
 		limit <- struct{}{}
 		wg.Add(1)
+
 		go func(i int, record []string) {
 			defer wg.Done()
+
 			name := record[0]
-			count, _ := fetchTagCount(name)
+			count, err := fetchTagCount(name)
+			if err != nil {
+				log.Fatal(err)
+			}
 			log.Println(name, count)
 			records[i+1] = append(record, count)
+
 			<-limit
 		}(i, record)
 	}
