@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 )
 
@@ -82,15 +81,11 @@ func update(records [][]string) error {
 	records[0] = append(records[0], today)
 
 	limit := make(chan struct{}, maxWorkers)
-	var wg sync.WaitGroup
 
 	for i, record := range records[1:] {
 		limit <- struct{}{}
-		wg.Add(1)
 
 		go func(i int, record []string) {
-			defer wg.Done()
-
 			name := record[0]
 			count, err := fetchTagCount(name)
 			if err != nil {
@@ -103,7 +98,9 @@ func update(records [][]string) error {
 		}(i, record)
 	}
 
-	wg.Wait()
+	for i := 0; i < maxWorkers; i++ {
+		limit <- struct{}{}
+	}
 
 	return nil
 }
